@@ -1,4 +1,4 @@
-const CACHE = 'memory-cards-v1';
+const CACHE = 'memory-cards-v7';
 const FILES = [
   './',
   'index.html',
