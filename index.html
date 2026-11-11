@@ -161,6 +161,14 @@ body.home main{visibility:hidden}
 .rbar{height:10px;border-radius:99px;background:rgba(31,111,209,.15);overflow:hidden;margin-top:16px}
 .rbar>i{display:block;height:100%;width:100%;border-radius:99px;background:#1f6fd1;transform:scaleX(0);transform-origin:right center}
 .result.show .rbar>i{animation:fill 3s linear forwards}
+.confetti{position:absolute;top:50%;left:50%;width:0;height:0;pointer-events:none}
+.cf{position:absolute;left:-4px;top:-6px;width:8px;height:12px;border-radius:2px;opacity:0}
+.result.show .cf{animation:burst 1.5s cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes burst{
+  0%{transform:translate(0,0) rotate(0) scale(.4);opacity:1}
+  45%{transform:translate(var(--dx),var(--dy)) rotate(calc(var(--r)*.5)) scale(1);opacity:1}
+  100%{transform:translate(calc(var(--dx)*1.12),calc(var(--dy) + 200px)) rotate(var(--r)) scale(1);opacity:0}
+}
 .pwa{position:fixed;top:0;right:0;bottom:0;left:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;visibility:hidden;transition:opacity .35s ease,visibility .35s}
 .pwa.show{opacity:1;visibility:visible}
 .pwa .veil{pointer-events:auto}
@@ -249,6 +257,7 @@ body.home main{visibility:hidden}
 </div>
 <div class="result" id="result" role="status" aria-live="polite">
   <div class="veil"></div>
+  <div class="confetti" id="confetti" aria-hidden="true"></div>
   <div class="rwin">
     <h2>أحسنت</h2>
     <p id="resLevel"></p>
@@ -337,7 +346,15 @@ function tone(f,t0,dur,type,vol,f2){
   g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
   o.connect(g);g.connect(a.destination);o.start(t);o.stop(t+dur+0.03);
 }
+function noise(dur,vol){
+  var a=audioCtx();if(!a)return;
+  var n=Math.floor(a.sampleRate*dur),buf=a.createBuffer(1,n,a.sampleRate),d=buf.getChannelData(0);
+  for(var i=0;i<n;i++)d[i]=(Math.random()*2-1)*(1-i/n);
+  var s=a.createBufferSource(),g=a.createGain();
+  s.buffer=buf;g.gain.value=vol;s.connect(g);g.connect(a.destination);s.start();
+}
 var SFX={
+  pop:function(){noise(.14,.45);tone(160,0,.12,'sine',.4,50);},
   tap:function(){tone(700,0,.05,'triangle',.1,520);},
   flip:function(){tone(520,0,.09,'triangle',.18,780);},
   reveal:function(){tone(440,0,.12,'sine',.12);tone(660,.08,.16,'sine',.12);},
@@ -487,8 +504,27 @@ function showResult(){
   resLevel.textContent='أنهيت المرحلة '+level;
   resTime.textContent='في وقت '+fmt(seconds);
   resultEl.classList.add('show');
+  sfx('pop');confetti();
 }
 function hideResult(){resultEl.classList.remove('show');}
+
+/* قصاصات ملوّنة تنفجر من خلف النافذة (لا تظهر عند تفعيل تقليل الحركة) */
+var CF_COLORS=['#1f6fd1','#5fa832','#f5b81c','#f58a34','#e0457b','#7a5bd6'];
+function confetti(){
+  var box=document.getElementById('confetti');box.innerHTML='';
+  if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  for(var i=0;i<36;i++){
+    var p=document.createElement('div'),a=Math.random()*Math.PI*2,d=170+Math.random()*150;
+    p.className='cf';
+    p.style.setProperty('--dx',Math.round(Math.cos(a)*d)+'px');
+    p.style.setProperty('--dy',Math.round(Math.sin(a)*d*.8-40)+'px');
+    p.style.setProperty('--r',Math.round((Math.random()*2-1)*720)+'deg');
+    p.style.background=CF_COLORS[i%CF_COLORS.length];
+    p.style.animationDelay=(Math.random()*.08).toFixed(2)+'s';
+    if(i%3===0){p.style.width='9px';p.style.height='9px';p.style.borderRadius='50%';}
+    box.appendChild(p);
+  }
+}
 
 function win(){
   stopTimer();lock=true;
