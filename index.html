@@ -578,7 +578,7 @@ function buildLevels(){
     }
     b.addEventListener('click',function(){
       if(n>maxLevel){lvMsg.textContent='أنهِ المرحلة '+maxLevel+' أولاً لتفتح هذه المرحلة.';return;}
-      enterGame(n);
+      openGame(n);
     });
     g.appendChild(b);
   })(n);}
@@ -629,12 +629,41 @@ document.getElementById('pwaX').addEventListener('click',pwaHide);
 document.getElementById('pwaVeil').addEventListener('click',pwaHide);
 document.addEventListener('keydown',function(e){if(e.key==='Escape')pwaHide();});
 
-document.getElementById('playBtn').addEventListener('click',function(){enterGame();});
-document.getElementById('lvBtn').addEventListener('click',showLevels);
-document.getElementById('lvBack').addEventListener('click',showHome);
-document.getElementById('homeBtn').addEventListener('click',goHome);
-function goMap(){run++;stopTimer();lock=true;document.body.classList.add('home');showLevels();}
-document.getElementById('mapBtn').addEventListener('click',goMap);
+/* التنقل بين الواجهات (الرئيسية / الخريطة / اللعب) مرتبط بسجل المتصفح،
+   فيرجع زر الرجوع في الهاتف أو المتصفح إلى الواجهة التي جئت منها بدل الخروج من التطبيق */
+var stack=['home'];
+try{history.replaceState({i:0,s:'home'},'');}catch(e){}
+function pushScreen(s){
+  stack.push(s);
+  try{history.pushState({i:stack.length-1,s:s},'');}catch(e){}
+}
+function renderScreen(s){
+  pwaHide();
+  if(s==='home')goHome();
+  else if(s==='levels')goMap();
+  else enterGame();
+}
+window.addEventListener('popstate',function(e){
+  var st=e.state||{i:0,s:'home'};
+  stack.length=Math.min(stack.length,st.i+1);
+  stack[st.i]=st.s;
+  renderScreen(st.s);
+});
+function goMap(){run++;hideResult();stopTimer();lock=true;document.body.classList.add('home');showLevels();}
+function openGame(n){pushScreen('game');enterGame(n);}
+function openMap(){pushScreen('levels');goMap();}
+function backOne(){if(stack.length>1)history.back();else goHome();}
+function toHome(){
+  var k=stack.lastIndexOf('home'),top=stack.length-1;
+  if(k>=0&&k<top)history.go(k-top);
+  else goHome();
+}
+
+document.getElementById('playBtn').addEventListener('click',function(){openGame();});
+document.getElementById('lvBtn').addEventListener('click',openMap);
+document.getElementById('lvBack').addEventListener('click',backOne);
+document.getElementById('homeBtn').addEventListener('click',toHome);
+document.getElementById('mapBtn').addEventListener('click',openMap);
 
 if('serviceWorker' in navigator&&location.protocol!=='file:'){
   window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});
