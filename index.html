@@ -151,6 +151,16 @@ body.home main{visibility:hidden}
 .glass .count{display:block;height:4px;border-radius:99px;background:rgba(255,255,255,.75);margin-top:14px;transform-origin:right center}
 .intro.show .count{animation:shrink 5s linear forwards}
 @keyframes shrink{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+.result{position:fixed;top:0;right:0;bottom:0;left:0;z-index:30;display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;visibility:hidden;transition:opacity .35s ease,visibility .35s}
+.result.show{opacity:1;visibility:visible}
+.result .veil{pointer-events:auto}
+.rwin{position:relative;width:min(320px,100%);text-align:center;padding:24px 24px 20px;border-radius:22px;background:#fff;box-shadow:0 10px 36px rgba(20,60,100,.28);color:#102635;transform:translateY(14px) scale(.94);transition:transform .35s ease}
+.result.show .rwin{transform:none}
+.rwin h2{margin:0 0 6px;font-size:28px;line-height:1.4;font-weight:700;color:var(--ok)}
+.rwin p{margin:0;font-size:18px;line-height:1.8;font-weight:500}
+.rbar{height:10px;border-radius:99px;background:rgba(31,111,209,.15);overflow:hidden;margin-top:16px}
+.rbar>i{display:block;height:100%;width:100%;border-radius:99px;background:#1f6fd1;transform:scaleX(0);transform-origin:right center}
+.result.show .rbar>i{animation:fill 3s linear forwards}
 .pwa{position:fixed;top:0;right:0;bottom:0;left:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;visibility:hidden;transition:opacity .35s ease,visibility .35s}
 .pwa.show{opacity:1;visibility:visible}
 .pwa .veil{pointer-events:auto}
@@ -170,6 +180,7 @@ body.home main{visibility:hidden}
 #pwaNote{min-height:0;margin:12px 0 0;font-size:14px;line-height:1.7;color:#102635}
 #pwaNote:empty{display:none}
 @media (prefers-reduced-motion: reduce){
+  .result,.rwin{transition:none}
   .pglass{transition:none}
   .pbtn .arr,.pbtn .sp{animation:none}
 }
@@ -236,6 +247,15 @@ body.home main{visibility:hidden}
     <i class="count"></i>
   </div>
 </div>
+<div class="result" id="result" role="status" aria-live="polite">
+  <div class="veil"></div>
+  <div class="rwin">
+    <h2>أحسنت</h2>
+    <p id="resLevel"></p>
+    <p id="resTime"></p>
+    <div class="rbar"><i></i></div>
+  </div>
+</div>
 <main>
   <h1 class="sr-only">بطاقات الذاكرة</h1>
   <header class="top">
@@ -264,6 +284,7 @@ var MAX_LEVEL=30;
 var board=document.getElementById('board'),levelEl=document.getElementById('level'),
     leftEl=document.getElementById('left'),timeEl=document.getElementById('time'),msg=document.getElementById('msg'),
     nextBtn=document.getElementById('next'),
+    resultEl=document.getElementById('result'),resLevel=document.getElementById('resLevel'),resTime=document.getElementById('resTime'),
     barLevel=document.getElementById('barLevel'),barLeft=document.getElementById('barLeft'),barTime=document.getElementById('barTime'),timeBox=document.getElementById('timeBox');
 document.getElementById('splashLogo').src=document.getElementById('logo').src;
 document.getElementById('homeLogo').src=document.getElementById('logo').src;
@@ -370,7 +391,7 @@ function show(c,on){
 }
 
 function start(){
-  run++;var myRun=run;
+  run++;var myRun=run;hideResult();
   stopTimer();seconds=0;first=null;moves=0;mistakes=0;found=0;
   var n=cardsFor(level);pairs=n/2;limit=limitFor(level,pairs);flipDelay=delayFor(level);
   levelEl.textContent=level+' / '+MAX_LEVEL;timeEl.textContent='0:00';showLeft();updateBars();
@@ -394,12 +415,10 @@ function start(){
     if(myRun!==run)return;
     for(var k=0;k<cards.length;k++)show(cards[k],true);
     sfx('reveal');
-    say('تذكّر أماكن الأشكال…');
     setTimeout(function(){
       if(myRun!==run)return;
       for(var k=0;k<cards.length;k++)show(cards[k],false);
       lock=false;startTimer();
-      say(limit===Infinity?'':'مسموح لك بـ '+limit+' أخطاء في هذه المرحلة.');
     },previewFor(level));
   }
   if(introPending){introPending=false;showIntro(preview);}
@@ -463,16 +482,25 @@ function praise(c){
   setTimeout(function(){if(b.parentNode)b.parentNode.removeChild(b);},1400);
 }
 
+var WIN_MS=3000;
+function showResult(){
+  resLevel.textContent='أنهيت المرحلة '+level;
+  resTime.textContent='في وقت '+fmt(seconds);
+  resultEl.classList.add('show');
+}
+function hideResult(){resultEl.classList.remove('show');}
+
 function win(){
   stopTimer();lock=true;
   if(level<MAX_LEVEL){
     setTimeout(function(){sfx('win');},450);
-    say('أحسنت! أنهيت المرحلة '+level+' في '+moves+' محاولة وزمن '+fmt(seconds)+'. ننتقل إلى المرحلة التالية…','ok');
+    showResult();
     var myRun=run;
     setTimeout(function(){
       if(myRun!==run)return;
+      hideResult();
       level++;saveLevel();start();
-    },1800);
+    },WIN_MS);
   }else{
     setTimeout(function(){sfx('final');},450);
     say('مبروك! أنهيت كل المراحل الثلاثين.','ok');
@@ -501,7 +529,7 @@ function enterGame(n){
   homeEl.classList.add('hide');levelsEl.classList.add('hide');
   start();
 }
-function goHome(){run++;stopTimer();lock=true;showHome();}
+function goHome(){run++;hideResult();stopTimer();lock=true;showHome();}
 
 function buildLevels(){
   var g=document.getElementById('lvGrid');g.innerHTML='';lvMsg.textContent='';
