@@ -1,4 +1,4 @@
-const CACHE = 'memory-cards-v13';
+const CACHE = 'memory-cards-v14';
 const IMAGES = ['seed', 'faucet', 'wateringcan', 'shower', 'tree', 'house', 'rocket', 'backpack',
   'net', 'gift', 'comb', 'candle', 'frog', 'key', 'fish', 'brush'].map((n) => 'img/' + n + '.webp');
 const FILES = [
@@ -25,18 +25,37 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+/* الصور والأيقونات لا تتغير، فتُؤخذ من ذاكرة الجهاز أولاً دون طلب من الخادم.
+   إذا استبدلت صورة بنفس الاسم فارفع رقم CACHE أعلاه ليأخذها اللاعبون. */
+function isStatic(url) {
+  return /\.(webp|png)$/i.test(url.pathname);
+}
+
+function saveCopy(req, res) {
+  if (res.ok) {
+    const copy = res.clone();
+    caches.open(CACHE).then((cache) => cache.put(req, copy));
+  }
+  return res;
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  const url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
+
+  if (isStatic(url)) {
+    /* الذاكرة أولاً للصور */
+    event.respondWith(
+      caches.match(req).then((hit) => hit || fetch(req).then((res) => saveCopy(req, res)))
+    );
+    return;
+  }
+
+  /* الشبكة أولاً للصفحة وباقي الملفات، حتى تصل تعديلات الكود فوراً */
   event.respondWith(
     fetch(req)
-      .then((res) => {
-        if (res.ok) {
-          const copy = res.clone();
-          caches.open(CACHE).then((cache) => cache.put(req, copy));
-        }
-        return res;
-      })
+      .then((res) => saveCopy(req, res))
       .catch(() => caches.match(req).then((hit) => hit || caches.match('index.html')))
   );
 });
