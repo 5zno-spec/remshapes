@@ -1,4 +1,4 @@
-const CACHE = 'memory-cards-v11';
+const CACHE = 'memory-cards-v12';
 const FILES = [
   './',
   'index.html',
@@ -27,8 +27,10 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(req)
       .then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((cache) => cache.put(req, copy));
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((cache) => cache.put(req, copy));
+        }
         return res;
       })
       .catch(() => caches.match(req).then((hit) => hit || caches.match('index.html')))
